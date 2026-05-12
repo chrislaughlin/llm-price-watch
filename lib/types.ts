@@ -1,5 +1,6 @@
 export type Provider = "OpenAI" | "Anthropic" | "Google" | "Meta" | "Mistral" | "Cohere" | "Other";
-export type ModelModality = "text" | "embedding";
+export type ModelUse = "text" | "image" | "audio" | "video" | "file" | "embedding";
+export type ModelModality = ModelUse;
 export type QualityBand = "frontier" | "balanced" | "utility" | "unknown";
 
 export type PricePoint = {
@@ -7,59 +8,47 @@ export type PricePoint = {
   outputPricePer1M?: number;
   cacheWritePricePer1M?: number;
   cacheReadPricePer1M?: number;
+  webSearchPrice?: number;
 };
 
-export type PricingSource = {
-  type: "OpenRouter" | "Official override";
-  sourceUrl: string;
-  verifiedAt: string;
-  notes?: string;
+export type ModelArchitecture = {
+  modality?: string;
+  inputModalities: ModelUse[];
+  outputModalities: ModelUse[];
+  tokenizer?: string;
+  instructType?: string;
 };
 
-export type QualityScore = {
-  modelId: string;
-  score: number;
-  band: Exclude<QualityBand, "unknown">;
-  source: string;
-  notes?: string;
+export type TopProviderAttributes = {
+  contextWindow?: number;
+  maxCompletionTokens?: number;
+  isModerated?: boolean;
 };
 
 export type NormalizedModel = {
   id: string;
+  canonicalSlug?: string;
+  huggingFaceId?: string;
   name: string;
   provider: Provider;
   modality: ModelModality;
+  uses: ModelUse[];
+  description?: string;
   contextWindow: number;
+  createdAt?: string;
   price: PricePoint;
-  pricingSource: PricingSource;
-  quality?: QualityScore;
+  architecture: ModelArchitecture;
+  topProvider?: TopProviderAttributes;
+  supportedParameters: string[];
+  knowledgeCutoff?: string;
   priceIndex: number;
-  costPerQuality?: number;
-};
-
-export type OfficialOverride = PricePoint & {
-  id: string;
-  name: string;
-  provider: Provider;
-  modality: ModelModality;
-  contextWindow: number;
-  sourceUrl: string;
-  verifiedAt: string;
-  notes?: string;
 };
 
 export type DashboardData = {
   models: NormalizedModel[];
-  textModels: NormalizedModel[];
-  embeddingModels: NormalizedModel[];
+  latestModels: NormalizedModel[];
   generatedAt: string;
   sourceUrl: string;
-  stats: {
-    cheapestText?: NormalizedModel;
-    cheapestEmbedding?: NormalizedModel;
-    officialOverrides: number;
-    qualityCovered: number;
-  };
 };
 
 export type EquivalentFilter = {
