@@ -42,6 +42,8 @@ export type NormalizedModel = {
   supportedParameters: string[];
   knowledgeCutoff?: string;
   priceIndex: number;
+  topPickScore: number;
+  topPickReasons: string[];
 };
 
 export type DashboardData = {
