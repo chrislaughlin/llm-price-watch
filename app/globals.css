@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f1ea;
-  --foreground: #171512;
+  --background: #060816;
+  --foreground: #f8fafc;
 }
 
 @theme inline {
@@ -21,9 +21,11 @@ html {
 }
 
 body {
+  min-height: 100%;
   background:
-    radial-gradient(circle at top left, rgb(225 209 177 / 45%), transparent 32rem),
-    var(--background);
+    radial-gradient(circle at 15% 0%, rgb(124 58 237 / 32%), transparent 32rem),
+    radial-gradient(circle at 85% 8%, rgb(14 165 233 / 22%), transparent 30rem),
+    linear-gradient(180deg, #070816 0%, #090b18 52%, #03040a 100%);
   color: var(--foreground);
 }
 
@@ -35,6 +37,13 @@ select {
 
 button {
   cursor: pointer;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .line-clamp-5 {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { classifyModality, computePriceIndex, findCheaperEquivalents, normalizeOpenRouterModel } from "@/lib/pricing";
+import { classifyModality, computePriceIndex, computeTopPickScore, findCheaperEquivalents, normalizeOpenRouterModel } from "@/lib/pricing";
 import type { NormalizedModel } from "@/lib/types";
 
 const base: NormalizedModel = {
@@ -14,6 +14,8 @@ const base: NormalizedModel = {
   topProvider: { maxCompletionTokens: 8192, isModerated: true },
   supportedParameters: ["tools"],
   priceIndex: 12,
+  topPickScore: 32,
+  topPickReasons: ["Tool use"],
 };
 
 describe("pricing data layer", () => {
@@ -36,6 +38,8 @@ describe("pricing data layer", () => {
     expect(model?.price.outputPricePer1M).toBe(4);
     expect(model?.architecture.tokenizer).toBe("GPT");
     expect(model?.topProvider?.maxCompletionTokens).toBe(4096);
+    expect(model?.topPickScore).toBeGreaterThan(0);
+    expect(model?.topPickReasons).toContain("Structured output");
   });
 
   it("classifies embedding models by modality metadata or name", () => {
@@ -59,6 +63,19 @@ describe("pricing data layer", () => {
 
   it("computes embedding price index from input price", () => {
     expect(computePriceIndex("embedding", 0.02)).toBeCloseTo(0.02);
+  });
+
+  it("scores top picks from price, context, output, and capability attributes", () => {
+    const score = computeTopPickScore({
+      priceIndex: 0,
+      contextWindow: 1_000_000,
+      price: { inputPricePer1M: 0, outputPricePer1M: 0, cacheReadPricePer1M: 0 },
+      supportedParameters: ["tools", "structured_outputs", "reasoning"],
+      uses: ["text", "image", "file"],
+      topProvider: { maxCompletionTokens: 64_000 },
+    });
+
+    expect(score).toBeGreaterThan(85);
   });
 
   it("filters cheaper equivalents by modality, price, provider, and context", () => {

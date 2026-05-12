@@ -43,6 +43,7 @@ const providerMatchers: Array<[Provider, RegExp]> = [
 ];
 
 const modelUses = ["text", "image", "audio", "video", "file", "embedding"] as const satisfies readonly ModelUse[];
+const premiumCapabilityParameters = new Set(["tools", "tool_choice", "structured_outputs", "response_format", "reasoning", "include_reasoning"]);
 
 export function classifyProvider(id: string): Provider {
   return providerMatchers.find(([, test]) => test.test(id))?.[0] ?? "Other";
@@ -83,6 +84,35 @@ export function computePriceIndex(modality: ModelModality, inputPricePer1M: numb
   return modality === "embedding" ? inputPricePer1M : 0.8 * inputPricePer1M + 0.2 * (outputPricePer1M ?? inputPricePer1M);
 }
 
+export function computeTopPickScore(model: Pick<NormalizedModel, "priceIndex" | "contextWindow" | "price" | "supportedParameters" | "uses" | "createdAt" | "topProvider">): number {
+  const affordability = model.priceIndex <= 0 ? 42 : Math.max(0, 42 - Math.log10(model.priceIndex + 1) * 18);
+  const context = Math.min(24, Math.log2(Math.max(model.contextWindow, 1) / 8000 + 1) * 6);
+  const maxOutput = Math.min(10, ((model.topProvider?.maxCompletionTokens ?? 0) / 32000) * 10);
+  const capability = Math.min(16, model.uses.length * 2.5 + model.supportedParameters.filter((parameter) => premiumCapabilityParameters.has(parameter)).length * 1.5);
+  const cacheBonus = model.price.cacheReadPricePer1M !== undefined || model.price.cacheWritePricePer1M !== undefined ? 4 : 0;
+  const created = model.createdAt ? new Date(model.createdAt).getTime() : 0;
+  const ageDays = created ? (Date.now() - created) / 86_400_000 : Number.POSITIVE_INFINITY;
+  const recency = ageDays <= 30 ? 4 : ageDays <= 180 ? 2 : 0;
+
+  return Math.round((affordability + context + maxOutput + capability + cacheBonus + recency) * 10) / 10;
+}
+
+export function getTopPickReasons(model: Pick<NormalizedModel, "priceIndex" | "contextWindow" | "price" | "supportedParameters" | "uses" | "topProvider">): string[] {
+  const reasons: string[] = [];
+  if (model.priceIndex === 0) reasons.push("Free route");
+  else if (model.priceIndex <= 0.25) reasons.push("Ultra-low blended price");
+  else if (model.priceIndex <= 1) reasons.push("Low blended price");
+  if (model.contextWindow >= 1_000_000) reasons.push("1M+ context");
+  else if (model.contextWindow >= 128_000) reasons.push("Long context");
+  if ((model.topProvider?.maxCompletionTokens ?? 0) >= 32_000) reasons.push("Large output budget");
+  if (model.uses.length >= 3) reasons.push("Multimodal");
+  if (model.supportedParameters.includes("tools") || model.supportedParameters.includes("tool_choice")) reasons.push("Tool use");
+  if (model.supportedParameters.includes("structured_outputs") || model.supportedParameters.includes("response_format")) reasons.push("Structured output");
+  if (model.supportedParameters.includes("reasoning") || model.supportedParameters.includes("include_reasoning")) reasons.push("Reasoning controls");
+  if (model.price.cacheReadPricePer1M !== undefined || model.price.cacheWritePricePer1M !== undefined) reasons.push("Cache pricing");
+  return reasons.slice(0, 4);
+}
+
 export function normalizeOpenRouterModel(model: OpenRouterModel): NormalizedModel | undefined {
   const inputPricePer1M = dollarsPerTokenToPerMillion(model.pricing?.prompt);
   if (inputPricePer1M === undefined) return undefined;
@@ -93,8 +123,7 @@ export function normalizeOpenRouterModel(model: OpenRouterModel): NormalizedMode
   const outputModalities = uniqueUses(model.architecture?.output_modalities ?? []);
   const uses = uniqueUses([...inputModalities, ...outputModalities, modality]);
   const priceIndex = computePriceIndex(modality, inputPricePer1M, outputPricePer1M);
-
-  return {
+  const normalized = {
     id: model.id,
     canonicalSlug: model.canonical_slug ?? undefined,
     huggingFaceId: model.hugging_face_id ?? undefined,
@@ -129,6 +158,12 @@ export function normalizeOpenRouterModel(model: OpenRouterModel): NormalizedMode
     supportedParameters: model.supported_parameters ?? [],
     knowledgeCutoff: model.knowledge_cutoff ?? undefined,
     priceIndex,
+  } satisfies Omit<NormalizedModel, "topPickScore" | "topPickReasons">;
+
+  return {
+    ...normalized,
+    topPickScore: computeTopPickScore(normalized),
+    topPickReasons: getTopPickReasons(normalized),
   };
 }
 
