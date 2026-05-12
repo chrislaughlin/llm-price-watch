@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #020617;
-  --foreground: #f8fafc;
+  --background: #f4f1ea;
+  --foreground: #171512;
 }
 
 @theme inline {
@@ -12,6 +12,34 @@
   --font-mono: var(--font-geist-mono);
 }
 
-* { box-sizing: border-box; }
-body { background: var(--background); color: var(--foreground); }
-button, input, select { font: inherit; }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--background);
+}
+
+body {
+  background:
+    radial-gradient(circle at top left, rgb(225 209 177 / 45%), transparent 32rem),
+    var(--background);
+  color: var(--foreground);
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.line-clamp-5 {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
