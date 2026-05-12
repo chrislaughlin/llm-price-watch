@@ -6,30 +6,30 @@ export type OpenRouterModel = {
   id: string;
   canonical_slug?: string | null;
   hugging_face_id?: string | null;
-  name?: string;
-  created?: number;
-  description?: string;
-  context_length?: number;
+  name?: string | null;
+  created?: number | null;
+  description?: string | null;
+  context_length?: number | null;
   architecture?: {
-    modality?: string;
-    input_modalities?: string[];
-    output_modalities?: string[];
-    tokenizer?: string;
+    modality?: string | null;
+    input_modalities?: string[] | null;
+    output_modalities?: string[] | null;
+    tokenizer?: string | null;
     instruct_type?: string | null;
   };
   pricing?: {
-    prompt?: string;
-    completion?: string;
-    input_cache_read?: string;
-    input_cache_write?: string;
-    web_search?: string;
+    prompt?: string | null;
+    completion?: string | null;
+    input_cache_read?: string | null;
+    input_cache_write?: string | null;
+    web_search?: string | null;
   };
   top_provider?: {
-    context_length?: number;
-    max_completion_tokens?: number;
-    is_moderated?: boolean;
+    context_length?: number | null;
+    max_completion_tokens?: number | null;
+    is_moderated?: boolean | null;
   } | null;
-  supported_parameters?: string[];
+  supported_parameters?: string[] | null;
   knowledge_cutoff?: string | null;
 };
 
@@ -54,7 +54,7 @@ function normalizeUse(value: string): ModelUse | undefined {
   return modelUses.find((use) => use === lower);
 }
 
-function uniqueUses(values: Array<string | undefined>): ModelUse[] {
+function uniqueUses(values: Array<string | null | undefined>): ModelUse[] {
   return Array.from(new Set(values.flatMap((value) => (value ? [normalizeUse(value)] : [])).filter(Boolean) as ModelUse[]));
 }
 
@@ -69,12 +69,12 @@ export function classifyModality(model: OpenRouterModel): ModelModality {
   return uses[0] ?? "text";
 }
 
-function dollarsPerTokenToPerMillion(value: string | undefined): number | undefined {
+function dollarsPerTokenToPerMillion(value: string | null | undefined): number | undefined {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed * 1_000_000 : undefined;
 }
 
-function parsePrice(value: string | undefined): number | undefined {
+function parsePrice(value: string | null | undefined): number | undefined {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
 }
@@ -102,7 +102,7 @@ export function normalizeOpenRouterModel(model: OpenRouterModel): NormalizedMode
     provider: classifyProvider(model.id),
     modality,
     uses,
-    description: model.description,
+    description: model.description ?? undefined,
     contextWindow: model.context_length ?? model.top_provider?.context_length ?? 0,
     createdAt: model.created ? new Date(model.created * 1000).toISOString() : undefined,
     price: {
@@ -113,17 +113,17 @@ export function normalizeOpenRouterModel(model: OpenRouterModel): NormalizedMode
       webSearchPrice: parsePrice(model.pricing?.web_search),
     },
     architecture: {
-      modality: model.architecture?.modality,
+      modality: model.architecture?.modality ?? undefined,
       inputModalities,
       outputModalities,
-      tokenizer: model.architecture?.tokenizer,
+      tokenizer: model.architecture?.tokenizer ?? undefined,
       instructType: model.architecture?.instruct_type ?? undefined,
     },
     topProvider: model.top_provider
       ? {
-          contextWindow: model.top_provider.context_length,
-          maxCompletionTokens: model.top_provider.max_completion_tokens,
-          isModerated: model.top_provider.is_moderated,
+          contextWindow: model.top_provider.context_length ?? undefined,
+          maxCompletionTokens: model.top_provider.max_completion_tokens ?? undefined,
+          isModerated: model.top_provider.is_moderated ?? undefined,
         }
       : undefined,
     supportedParameters: model.supported_parameters ?? [],
